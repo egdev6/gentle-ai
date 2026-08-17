@@ -1,0 +1,134 @@
+schema: gentle-ai.flow/v0
+name: github-project-task-flow
+status: illustrative
+summary: >
+  Minimal Flow v0 contract for demonstrating how SDD phase hooks can keep a
+  GitHub Project task synchronized while preserving evidence for later checks.
+
+scope:
+  live_target: Stack-and-Flow/design-system
+  repository_role: docs-and-fixtures-only
+  demo_issue: "[Flow demo] Button token cleanup"
+  external_system: GitHub Project
+  live_mutation_default: false
+
+principles:
+  - Flow coordinates operational evidence; it does not approve content.
+  - SDD owns requirements, design, implementation tasks, and spec verification.
+  - RDD starts after a completed candidate exists and owns receipt-based gates.
+  - Demo mutations must use a clearly marked demo issue or sandbox project item.
+
+state:
+  initial: planned
+  values:
+    - planned
+    - in_progress
+    - verifying
+    - done
+    - blocked
+
+inputs:
+  required:
+    - sdd_change_id
+    - demo_issue_url
+    - github_project_item_id
+  simulated_values:
+    sdd_change_id: flow-demo-button-token-cleanup
+    demo_issue_url: https://github.com/Stack-and-Flow/design-system/issues/0000
+    github_project_item_id: PVTI_demo_item_0000
+
+steps:
+  - id: tasks.ensure_project_item
+    sdd_hook: tasks
+    target_state: planned
+    action: >
+      Ensure the clearly marked demo issue has a GitHub Project item and record
+      the intended starting status.
+    expected_artifacts:
+      - demo issue URL
+      - GitHub Project item identifier
+      - planned status snapshot
+    gate:
+      checker: project_item_present
+      pass_when: Project item exists and is linked to the demo issue.
+
+  - id: apply.mark_in_progress
+    sdd_hook: apply
+    target_state: in_progress
+    action: >
+      Move the demo Project item to In Progress when implementation work starts.
+    expected_artifacts:
+      - before status snapshot
+      - after status snapshot
+      - implementation start note
+    gate:
+      checker: status_is_in_progress
+      pass_when: Project item status is In Progress and evidence is recorded.
+
+  - id: verify.check_board_evidence
+    sdd_hook: verify
+    target_state: verifying
+    action: >
+      Check that board state, issue link, and SDD evidence describe the same demo
+      work item.
+    expected_artifacts:
+      - verification query result
+      - linked SDD verify note
+      - evidence consistency note
+    gate:
+      verifier: board_state_consistency
+      pass_when: Board status and recorded evidence are consistent.
+
+  - id: archive.sync_final_status
+    sdd_hook: archive
+    target_state: done
+    action: >
+      Move the demo Project item to the agreed final status or record why it was
+      intentionally left open.
+    expected_artifacts:
+      - final status snapshot
+      - archive note
+      - reset note for future demos
+    gate:
+      checker: final_status_recorded
+      pass_when: Final status or intentional exception is documented.
+
+verification:
+  verifier: github-project-task-flow-checker
+  checks:
+    - id: issue_linked
+      description: Demo issue URL is present and clearly marked as demo data.
+    - id: project_item_status
+      description: Project item status matches the expected Flow state.
+    - id: evidence_attached
+      description: Each completed step records the evidence it claims.
+    - id: no_authority_claim
+      description: Flow evidence does not claim SDD completion or RDD approval.
+
+rdd_hooks:
+  - event: candidate_completed
+    provides_context:
+      - demo issue URL
+      - GitHub Project item identifier
+      - SDD phase evidence
+      - external board status snapshots
+    never:
+      - approve content
+      - classify RDD risk
+      - select RDD lenses
+      - mint or validate RDD receipts
+
+artifacts:
+  expected:
+    - flow contract fixture
+    - demo issue reference
+    - project item reference
+    - status snapshots
+    - SDD phase notes
+    - optional RDD receipt reference when a real RDD lifecycle completes
+
+non_goals:
+  - Replace SDD proposal, spec, design, tasks, apply, verify, or archive.
+  - Replace RDD review authority or delivery gates.
+  - Automate live GitHub Project mutation from this repository.
+  - Define a stable public Flow runtime schema.
